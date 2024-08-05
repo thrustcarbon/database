@@ -2,6 +2,7 @@
 
 namespace Bosnadev\Database\Schema\Grammars;
 
+use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Support\Fluent;
 use Illuminate\Database\Schema\Blueprint as BaseBlueprint;
 use Bosnadev\Database\Schema\Blueprint;
@@ -14,7 +15,7 @@ class PostgresGrammar extends \Illuminate\Database\Schema\Grammars\PostgresGramm
 {
      /**
      * Check if the type is uuid, use internal guid
-     * 
+     *
      * @param  string $type
      * @return \Doctrine\DBAL\Types\Type
      */
@@ -265,7 +266,7 @@ class PostgresGrammar extends \Illuminate\Database\Schema\Grammars\PostgresGramm
     {
         return "daterange";
     }
-    
+
     /**
      * Create the column definition for a Text Search Vector type.
      *
@@ -284,7 +285,11 @@ class PostgresGrammar extends \Illuminate\Database\Schema\Grammars\PostgresGramm
      */
     protected function getDefaultValue($value)
     {
-        if($this->isUuid($value)) return strval($value);
+        if ($this->isUuid($value)) {
+            return $value instanceof Expression
+                ? $this->getValue($value)
+                : strval($value);
+        }
 
         return parent::getDefaultValue($value);
     }
@@ -297,6 +302,10 @@ class PostgresGrammar extends \Illuminate\Database\Schema\Grammars\PostgresGramm
      */
     protected function isUuid($value)
     {
+        if ($value instanceof Expression) {
+            $value = $this->getValue($value);
+        }
+
         return preg_match('/^uuid_generate_v/', $value);
     }
 
@@ -313,7 +322,7 @@ class PostgresGrammar extends \Illuminate\Database\Schema\Grammars\PostgresGramm
 
         return sprintf('CREATE INDEX %s ON %s USING GIN(%s)', $command->index, $this->wrapTable($blueprint), $columns);
     }
-    
+
     /**
      * Compile a gist index key command.
      *
